@@ -12,6 +12,7 @@
         <br>
         <span id="historyblock" style="display: none; margin-top: 10px;">History : <select id="history"></select></span>
         <span id="error" style="color: red;"></span><br><br>
+        <div id="profile"></div>
         <div id="timeline"></div>
         <script>
             let history = "<option value='' selected>--</option>";
@@ -41,10 +42,15 @@
                 if (!did) {
                     return;
                 }
+                const profile = await getProfile(did);
+                if (!profile) {
+                    return;
+                }
                 const feeds = await getAuthorFeed(handle, did);
                 if (!feeds) {
                     return;
                 }
+                document.getElementById("profile").innerHTML = buildProfile(profile);
                 document.getElementById("timeline").innerHTML = await buildTimeline(feeds, did);
             }, false);
             async function getAuthorFeed(handle, did) {
@@ -73,6 +79,30 @@
                 } catch (e) {
                     document.getElementById("error").innerText = "cannot retrieve did.";
                 }
+            }
+            async function getProfile(did) {
+                try {
+                    const url = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + encodeURI(did);
+                    const response = await fetch(url);
+                    if (!response) {
+                        return;
+                    }
+                    return await response.json();
+                } catch(e) {
+                    document.getElementById("error").innerText = "cannot retrieve profile.";
+                }
+            }
+            function buildProfile(profile) {
+                const tags =
+                    "<img src='" + profile.avatar + "' style='float: right;' width='100'>" +
+                    "<h1>" + profile.displayName + "</h1><br>" +
+                    "<span style='color: rgb(111, 134, 159);'>@" + profile.handle + "</span><br>" +
+                    "<span style='font-weight: bold;'>" + profile.followersCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロワー</span> " +
+                    "<span style='font-weight: bold;'>" + profile.followsCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロー中</span> " +
+                    "<span style='font-weight: bold;'>" + profile.postsCount + "</span> <span style='color: rgb(111, 134, 159);'>投稿</span><br><br>" +
+                    profile.description.replace("\n", "<br>") + "<br>" +
+                    "<hr>";
+                return tags;
             }
             async function buildTimeline(feeds, did) {
                 let timeline = '';
