@@ -8,10 +8,27 @@
     </head>
     <body style="margin: 2%;">
         @<input type="text" id="handle" size="10">.bsky.social
-        <input type="button" id="btn" value="get"><br>
+        <input type="button" id="btn" value="get">
+        <br>
+        <span id="historyblock" style="display: none; margin-top: 10px;">History : <select id="history"></select></span>
         <span id="error" style="color: red;"></span><br><br>
         <div id="timeline"></div>
         <script>
+            let history = "<option value='' selected>--</option>";
+            if (Object.keys(localStorage).length > 0) {
+                Object.keys(localStorage).forEach(function(handle) {
+                    history = history + "<option value='" + handle + "'>" + handle + "</option>";
+                });
+                document.getElementById("history").innerHTML = history;
+                document.getElementById("historyblock").style.display = 'block';
+            }
+            document.getElementById("history").addEventListener('change', async function() {
+                if (!document.getElementById("history").value) {
+                    return;
+                }
+                document.getElementById("handle").value = document.getElementById("history").value.replace(".bsky.social", "");
+                document.getElementById("btn").click();
+            });
             document.getElementById("btn").addEventListener('click', async function() {
                 document.getElementById("error").innerText = "";
                 if (!document.getElementById("handle").value) {
