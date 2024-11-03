@@ -23,7 +23,7 @@
                 document.getElementById("history").innerHTML = history;
                 document.getElementById("historyblock").style.display = 'block';
             }
-            document.getElementById("history").addEventListener('change', async function() {
+            document.getElementById("history").addEventListener('change', function() {
                 if (!document.getElementById("history").value) {
                     return;
                 }
@@ -37,6 +37,7 @@
                     return;
                 }
                 const handle = document.getElementById("handle").value + ".bsky.social";
+                document.getElementById("profile").innerHTML = "";
                 document.getElementById("timeline").innerHTML = "<p>loading for @" + handle + "...</p>";
                 const did = await getDid(handle);
                 if (!did) {
@@ -51,7 +52,7 @@
                     return;
                 }
                 document.getElementById("profile").innerHTML = buildProfile(profile);
-                document.getElementById("timeline").innerHTML = await buildTimeline(feeds, did);
+                document.getElementById("timeline").innerHTML = buildTimeline(feeds, did);
             }, false);
             async function getAuthorFeed(handle, did) {
                 try {
@@ -104,7 +105,7 @@
                     "<hr>";
                 return tags;
             }
-            async function buildTimeline(feeds, did) {
+            function buildTimeline(feeds, did) {
                 let timeline = '';
                 Object.keys(feeds.feed).forEach(function(i) {
                     if (feeds.feed[i].post.author.did !== did) {
