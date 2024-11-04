@@ -13,6 +13,17 @@
         <span id="historyblock" style="display: none; margin-top: 10px;">History : <select id="history"></select></span>
         <span id="error" style="color: red;"></span><br><br>
         <div id="profile"></div>
+        <div id="followModal" class="modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="modal-title" id="followmodaltitle" style="font-weight: bold;"></span>
+                    </div>
+                    <div class="modal-body" id="followlist"></div>
+                    <div class="modal-footer"></div>
+                </div>
+            </div>
+        </div>
         <div id="timeline"></div>
         <script>
             let history = "<option value='' selected>--</option>";
@@ -47,24 +58,35 @@
                 if (!profile) {
                     return;
                 }
+                document.getElementById("profile").innerHTML = buildProfile(profile);
+                document.getElementById("showfollows").addEventListener('click', async function() {
+                    const follows = await getFollows(did);
+                    if (!follows) {
+                        return;
+                    }
+                    document.getElementById("followmodaltitle").innerText = "フォロー中";
+                    document.getElementById("followlist").innerHTML = await buildFollows(follows);
+                    const followModal = new bootstrap.Modal(document.getElementById('followModal'));
+                    followModal.show();
+                }, false);
+                document.getElementById("showfollowers").addEventListener('click', async function() {
+                    const followers = await getFollowers(did);
+                    if (!followers) {
+                        return;
+                    }
+                    document.getElementById("followmodaltitle").innerText = "フォロワー";
+                    document.getElementById("followlist").innerHTML = await buildFollowers(followers);
+                    const followerModal = new bootstrap.Modal(document.getElementById('followModal'));
+                    followerModal.show();
+                }, false);
                 const feeds = await getAuthorFeed(handle, did);
                 if (!feeds) {
                     return;
                 }
-                document.getElementById("profile").innerHTML = buildProfile(profile);
                 document.getElementById("timeline").innerHTML = buildTimeline(feeds, did);
             }, false);
             async function getAuthorFeed(handle, did) {
-                try {
-                    const url = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30";
-                    const response = await fetch(url);
-                    if (!response) {
-                        return;
-                    }
-                    return await response.json();
-                } catch(e) {
-                    document.getElementById("error").innerText = "cannot retrieve feeds.";
-                }
+                return await getXrpc(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
             }
             async function getDid(handle) {
                 try {
@@ -81,25 +103,58 @@
                     document.getElementById("error").innerText = "cannot retrieve did.";
                 }
             }
+            async function getFollowers(did) {
+                return await getXrpc(did, "followers", "app.bsky.graph.getFollowers?actor=" + encodeURI(did));
+            }
+            async function getFollows(did) {
+                return await getXrpc(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
+            }
             async function getProfile(did) {
+                return await getXrpc(did, "profile", "app.bsky.actor.getProfile?actor=" + encodeURI(did));
+            }
+            async function getXrpc(did, name, suffix) {
                 try {
-                    const url = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + encodeURI(did);
+                    const url = "https://public.api.bsky.app/xrpc/" + suffix;
                     const response = await fetch(url);
                     if (!response) {
                         return;
                     }
                     return await response.json();
                 } catch(e) {
-                    document.getElementById("error").innerText = "cannot retrieve profile.";
+                    document.getElementById("error").innerText = "cannot retrieve " + name + " from xrpc server.";
                 }
+            }
+            async function buildFollows(rows) {
+                let list = "";
+                Object.keys(rows.follows).forEach(function(i) {
+                    list = list + 
+                        "<img src='" + rows.follows[i].avatar + "' width='20'>" +
+                        "<span style='font-weight: bold;'>" + rows.follows[i].displayName + "</span><br>" +
+                        "<span style='color: rgb(111, 134, 159);'>@" + rows.follows[i].handle + "</span><br><br>" +
+                        rows.follows[i].description + "<br>" +
+                        "<hr>";
+                });
+                return list;
+            }
+            async function buildFollowers(rows) {
+                let list = "";
+                Object.keys(rows.followers).forEach(function(i) {
+                    list = list + 
+                        "<img src='" + rows.followers[i].avatar + "' width='20'>" +
+                        "<span style='font-weight: bold;'>" + rows.followers[i].displayName + "</span><br>" +
+                        "<span style='color: rgb(111, 134, 159);'>@" + rows.followers[i].handle + "</span><br><br>" +
+                        rows.followers[i].description + "<br>" +
+                        "<hr>";
+                });
+                return list;
             }
             function buildProfile(profile) {
                 const tags =
                     "<img src='" + profile.avatar + "' style='float: right;' width='100'>" +
                     "<h1>" + profile.displayName + "</h1><br>" +
                     "<span style='color: rgb(111, 134, 159);'>@" + profile.handle + "</span><br>" +
-                    "<span style='font-weight: bold;'>" + profile.followersCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロワー</span> " +
-                    "<span style='font-weight: bold;'>" + profile.followsCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロー中</span> " +
+                    "<span id='showfollowers' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followersCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロワー</span></span> " +
+                    "<span id='showfollows' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followsCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロー中</span></span> " +
                     "<span style='font-weight: bold;'>" + profile.postsCount + "</span> <span style='color: rgb(111, 134, 159);'>投稿</span><br><br>" +
                     profile.description.replace("\n", "<br>") + "<br>" +
                     "<hr>";
