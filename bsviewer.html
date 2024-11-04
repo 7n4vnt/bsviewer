@@ -55,14 +55,14 @@
                 if (!did) {
                     return;
                 }
-                const profile = await getProfile(did);
+                const profile = await xRpcRequest(did, "profile", "app.bsky.actor.getProfile?actor=" + encodeURI(did));
                 if (!profile) {
                     return;
                 }
                 document.getElementById("profile").innerHTML = buildProfile(profile);
                 await addEventFollows(did);
                 await addEventFollowers(did);
-                const feeds = await getAuthorFeed(handle, did);
+                const feeds = await xRpcRequest(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
                 if (!feeds) {
                     return;
                 }
@@ -79,7 +79,7 @@
 
             async function addEventFollows(did) {
                 document.getElementById("showfollows").addEventListener('click', async function() {
-                    const follows = await getFollows(did);
+                    const follows = await xRpcRequest(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
                     if (!follows) {
                         return;
                     }
@@ -92,7 +92,7 @@
 
             async function addEventFollowers(did) {
                 document.getElementById("showfollowers").addEventListener('click', async function() {
-                    const followers = await getFollowers(did);
+                    const followers = await xRpcRequest(did, "followers", "app.bsky.graph.getFollowers?actor=" + encodeURI(did));
                     if (!followers) {
                         return;
                     }
@@ -104,7 +104,7 @@
             }
 
             async function showThread(uri) {
-                const postThread = await getPostThread(uri);
+                const postThread = await xRpcRequest(uri, "post thread", "app.bsky.feed.getPostThread?uri=" + encodeURI(uri));
                     if (!postThread) {
                         return;
                     }
@@ -130,27 +130,7 @@
                 }
             }
 
-            async function getAuthorFeed(handle, did) {
-                return await xrpc(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
-            }
-
-            async function getFollowers(did) {
-                return await xrpc(did, "followers", "app.bsky.graph.getFollowers?actor=" + encodeURI(did));
-            }
-
-            async function getFollows(did) {
-                return await xrpc(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
-            }
-
-            async function getPostThread(uri) {
-                return await xrpc(uri, "post thread", "app.bsky.feed.getPostThread?uri=" + encodeURI(uri));
-            }
-
-            async function getProfile(did) {
-                return await xrpc(did, "profile", "app.bsky.actor.getProfile?actor=" + encodeURI(did));
-            }
-
-            async function xrpc(did, name, suffix) {
+            async function xRpcRequest(did, name, suffix) {
                 try {
                     const url = "https://public.api.bsky.app/xrpc/" + suffix;
                     const response = await fetch(url);
