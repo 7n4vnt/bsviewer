@@ -13,11 +13,12 @@
         <span id="historyblock" style="display: none; margin-top: 10px;">History : <select id="history"></select></span>
         <span id="error" style="color: red;"></span><br><br>
         <div id="profile"></div>
-        <div id="followModal" class="modal" tabindex="-1">
+        <div id="modal" class="modal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
                         <span class="modal-title" id="followmodaltitle" style="font-weight: bold;"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body" id="followlist"></div>
                     <div class="modal-footer"></div>
@@ -34,13 +35,7 @@
                 document.getElementById("history").innerHTML = history;
                 document.getElementById("historyblock").style.display = 'block';
             }
-            document.getElementById("history").addEventListener('change', function() {
-                if (!document.getElementById("history").value) {
-                    return;
-                }
-                document.getElementById("handle").value = document.getElementById("history").value.replace(".bsky.social", "");
-                document.getElementById("btn").click();
-            });
+
             document.getElementById("btn").addEventListener('click', async function() {
                 document.getElementById("error").innerText = "";
                 if (!document.getElementById("handle").value) {
@@ -59,6 +54,24 @@
                     return;
                 }
                 document.getElementById("profile").innerHTML = buildProfile(profile);
+                await addEventFollows(did);
+                await addEventFollowers(did);
+                const feeds = await getAuthorFeed(handle, did);
+                if (!feeds) {
+                    return;
+                }
+                document.getElementById("timeline").innerHTML = buildTimeline(feeds, did);
+            }, false);
+
+            document.getElementById("history").addEventListener('change', function() {
+                if (!document.getElementById("history").value) {
+                    return;
+                }
+                document.getElementById("handle").value = document.getElementById("history").value.replace(".bsky.social", "");
+                document.getElementById("btn").click();
+            });
+
+            async function addEventFollows(did) {
                 document.getElementById("showfollows").addEventListener('click', async function() {
                     const follows = await getFollows(did);
                     if (!follows) {
@@ -66,9 +79,12 @@
                     }
                     document.getElementById("followmodaltitle").innerText = "フォロー中";
                     document.getElementById("followlist").innerHTML = await buildFollows(follows);
-                    const followModal = new bootstrap.Modal(document.getElementById('followModal'));
+                    const followModal = new bootstrap.Modal(document.getElementById('modal'));
                     followModal.show();
                 }, false);
+            }
+
+            async function addEventFollowers(did) {
                 document.getElementById("showfollowers").addEventListener('click', async function() {
                     const followers = await getFollowers(did);
                     if (!followers) {
@@ -76,18 +92,11 @@
                     }
                     document.getElementById("followmodaltitle").innerText = "フォロワー";
                     document.getElementById("followlist").innerHTML = await buildFollowers(followers);
-                    const followerModal = new bootstrap.Modal(document.getElementById('followModal'));
+                    const followerModal = new bootstrap.Modal(document.getElementById('modal'));
                     followerModal.show();
                 }, false);
-                const feeds = await getAuthorFeed(handle, did);
-                if (!feeds) {
-                    return;
-                }
-                document.getElementById("timeline").innerHTML = buildTimeline(feeds, did);
-            }, false);
-            async function getAuthorFeed(handle, did) {
-                return await getXrpc(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
             }
+
             async function getDid(handle) {
                 try {
                     const cachedDid = localStorage.getItem(handle);
@@ -103,16 +112,24 @@
                     document.getElementById("error").innerText = "cannot retrieve did.";
                 }
             }
+
+            async function getAuthorFeed(handle, did) {
+                return await xrpc(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
+            }
+
             async function getFollowers(did) {
-                return await getXrpc(did, "followers", "app.bsky.graph.getFollowers?actor=" + encodeURI(did));
+                return await xrpc(did, "followers", "app.bsky.graph.getFollowers?actor=" + encodeURI(did));
             }
+
             async function getFollows(did) {
-                return await getXrpc(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
+                return await xrpc(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
             }
+
             async function getProfile(did) {
-                return await getXrpc(did, "profile", "app.bsky.actor.getProfile?actor=" + encodeURI(did));
+                return await xrpc(did, "profile", "app.bsky.actor.getProfile?actor=" + encodeURI(did));
             }
-            async function getXrpc(did, name, suffix) {
+
+            async function xrpc(did, name, suffix) {
                 try {
                     const url = "https://public.api.bsky.app/xrpc/" + suffix;
                     const response = await fetch(url);
@@ -124,6 +141,7 @@
                     document.getElementById("error").innerText = "cannot retrieve " + name + " from xrpc server.";
                 }
             }
+
             async function buildFollows(rows) {
                 let list = "";
                 Object.keys(rows.follows).forEach(function(i) {
@@ -136,6 +154,7 @@
                 });
                 return list;
             }
+
             async function buildFollowers(rows) {
                 let list = "";
                 Object.keys(rows.followers).forEach(function(i) {
@@ -148,6 +167,7 @@
                 });
                 return list;
             }
+
             function buildProfile(profile) {
                 const tags =
                     "<img src='" + profile.avatar + "' style='float: right;' width='100'>" +
@@ -160,6 +180,7 @@
                     "<hr>";
                 return tags;
             }
+
             function buildTimeline(feeds, did) {
                 let timeline = '';
                 Object.keys(feeds.feed).forEach(function(i) {
