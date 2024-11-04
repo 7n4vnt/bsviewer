@@ -24,11 +24,10 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <span class="modal-title" id="followmodaltitle" style="font-weight: bold;"></span>
+                        <span class="modal-title" id="modaltitle" style="font-weight: bold;"></span>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body" id="followlist"></div>
-                    <div class="modal-footer"></div>
+                    <div class="modal-body" id="modalbody"></div>
                 </div>
             </div>
         </div>
@@ -84,10 +83,10 @@
                     if (!follows) {
                         return;
                     }
-                    document.getElementById("followmodaltitle").innerText = "フォロー中";
-                    document.getElementById("followlist").innerHTML = await buildFollows(follows);
-                    const followModal = new bootstrap.Modal(document.getElementById('modal'));
-                    followModal.show();
+                    document.getElementById("modaltitle").innerText = "フォロー中";
+                    document.getElementById("modalbody").innerHTML = await buildFollows(follows);
+                    const modal = new bootstrap.Modal(document.getElementById('modal'));
+                    modal.show();
                 }, false);
             }
 
@@ -97,11 +96,22 @@
                     if (!followers) {
                         return;
                     }
-                    document.getElementById("followmodaltitle").innerText = "フォロワー";
-                    document.getElementById("followlist").innerHTML = await buildFollowers(followers);
-                    const followerModal = new bootstrap.Modal(document.getElementById('modal'));
-                    followerModal.show();
+                    document.getElementById("modaltitle").innerText = "フォロワー";
+                    document.getElementById("modalbody").innerHTML = await buildFollowers(followers);
+                    const modal = new bootstrap.Modal(document.getElementById('modal'));
+                    modal.show();
                 }, false);
+            }
+
+            async function showThread(uri) {
+                const postThread = await getPostThread(uri);
+                    if (!postThread) {
+                        return;
+                    }
+                document.getElementById("modaltitle").innerText = "スレッド";
+                document.getElementById("modalbody").innerHTML = await buildPostThread(postThread);
+                const modal = new bootstrap.Modal(document.getElementById('modal'));
+                modal.show();
             }
 
             async function getDid(handle) {
@@ -130,6 +140,10 @@
 
             async function getFollows(did) {
                 return await xrpc(did, "follows", "app.bsky.graph.getFollows?actor=" + encodeURI(did));
+            }
+
+            async function getPostThread(uri) {
+                return await xrpc(uri, "post thread", "app.bsky.feed.getPostThread?uri=" + encodeURI(uri));
             }
 
             async function getProfile(did) {
@@ -191,6 +205,11 @@
             function buildTimeline(feeds, did) {
                 let timeline = '';
                 Object.keys(feeds.feed).forEach(function(i) {
+                    timeline = timeline + "<div";
+                    if (feeds.feed[i].post.replyCount > 0) {
+                        timeline = timeline + " onClick='showThread(\"" + feeds.feed[i].post.uri + "\");'";
+                    }
+                    timeline = timeline + ">";
                     if (feeds.feed[i].post.author.did !== did) {
                         timeline = timeline + '<svg fill="none" width="13" height="13" viewBox="0 0 24 24" style="color: rgb(66, 87, 108); margin-right: 3px;"><path fill="hsl(211, 24%, 34.2%)" fill-rule="evenodd" clip-rule="evenodd" d="M17.957 2.293a1 1 0 1 0-1.414 1.414L17.836 5H6a3 3 0 0 0-3 3v3a1 1 0 1 0 2 0V8a1 1 0 0 1 1-1h11.836l-1.293 1.293a1 1 0 0 0 1.414 1.414l2.47-2.47a1.75 1.75 0 0 0 0-2.474l-2.47-2.47ZM20 12a1 1 0 0 1 1 1v3a3 3 0 0 1-3 3H6.164l1.293 1.293a1 1 0 1 1-1.414 1.414l-2.47-2.47a1.75 1.75 0 0 1 0-2.474l2.47-2.47a1 1 0 0 1 1.414 1.414L6.164 17H18a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1Z"></path></svg>&nbsp;&nbsp;';
                     }
@@ -204,7 +223,7 @@
                         "<span style='font-weight: bold;'>" + feeds.feed[i].post.author.displayName + "</span>" +
                         "<span style='color: rgb(111, 134, 159);'> @" + feeds.feed[i].post.author.handle + "</span>" +
                         "<br><br>" +
-                        feeds.feed[i].post.record.text.replace("\n","<br>") + "<br>";
+                        feeds.feed[i].post.record.text.replace("\n", "<br>") + "<br>";
                     if (feeds.feed[i].post.embed) {
                         timeline = timeline + "<br>";
                         if (feeds.feed[i].post.embed.images) {
@@ -228,6 +247,11 @@
                         }
                     }
                     timeline = timeline + "<br>";
+                    if (feeds.feed[i].post.replyCount > 0) {
+                        timeline = timeline +
+                        '<svg fill="none" width="18" viewBox="0 0 24 24" height="18" style="color: rgb(111, 134, 159); pointer-events: none;"><path fill="hsl(211, 20%, 53%)" fill-rule="evenodd" clip-rule="evenodd" d="M2.002 6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H12.28l-4.762 2.858A1 1 0 0 1 6.002 21v-2h-1a3 3 0 0 1-3-3V6Zm3-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2a1 1 0 0 1 1 1v1.234l3.486-2.092a1 1 0 0 1 .514-.142h7a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-14Z"></path></svg>' +
+                        "<span style='color: rgb(111, 134, 159);'>&nbsp;" + feeds.feed[i].post.replyCount + "</span>&nbsp;&nbsp;";
+                    }
                     if (feeds.feed[i].post.repostCount > 0) {
                         timeline = timeline +
                             '<svg fill="none" width="13" height="13" viewBox="0 0 24 24" style="color: rgb(66, 87, 108); margin-right: 3px;"><path fill="hsl(211, 24%, 34.2%)" fill-rule="evenodd" clip-rule="evenodd" d="M17.957 2.293a1 1 0 1 0-1.414 1.414L17.836 5H6a3 3 0 0 0-3 3v3a1 1 0 1 0 2 0V8a1 1 0 0 1 1-1h11.836l-1.293 1.293a1 1 0 0 0 1.414 1.414l2.47-2.47a1.75 1.75 0 0 0 0-2.474l-2.47-2.47ZM20 12a1 1 0 0 1 1 1v3a3 3 0 0 1-3 3H6.164l1.293 1.293a1 1 0 1 1-1.414 1.414l-2.47-2.47a1.75 1.75 0 0 1 0-2.474l2.47-2.47a1 1 0 0 1 1.414 1.414L6.164 17H18a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1Z"></path></svg>&nbsp;'+
@@ -239,7 +263,115 @@
                             "<span style='color: rgb(111, 134, 159);'>" + feeds.feed[i].post.likeCount + "</span>&nbsp;&nbsp;";
                     }
                     const createdAt = new Date(feeds.feed[i].post.record.createdAt);
-                    timeline = timeline + "<span style='color: rgb(111, 134, 159);'>(" + createdAt.toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo',}) + ")</span><br><hr>";
+                    timeline = timeline + 
+                        "<span style='color: rgb(111, 134, 159);'>(" + createdAt.toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo',}) + ")</span><br>" +
+                        "</div>" +
+                        "<hr>";
+                });
+                return timeline;
+            }
+
+            async function buildPostThread(feeds) {
+                let timeline = '';
+                timeline = timeline +
+                        "<img src='" + feeds.thread.post.author.avatar + "' width='20'>&nbsp;&nbsp;" +
+                        "<span style='font-weight: bold;'>" + feeds.thread.post.author.displayName + "</span>" +
+                        "<span style='color: rgb(111, 134, 159);'> @" + feeds.thread.post.author.handle + "</span>" +
+                        "<br><br>" +
+                        feeds.thread.post.record.text.replace("\n", "<br>") + "<br>";
+                    if (feeds.thread.post.embed) {
+                        timeline = timeline + "<br>";
+                        if (feeds.thread.post.embed.images) {
+                            feeds.thread.post.embed.images.forEach(function(image) {
+                                if (image.thumb !== undefined) {
+                                    timeline = timeline + 
+                                        "<a href='" + image.fullsize + "' target='_blank'>" +
+                                        "<img src='" + image.thumb + "' width='300'>" +
+                                        "</a><br>"
+                                }
+                            });
+                        }
+                        if (feeds.thread.post.embed.external) {
+                            timeline = timeline +
+                                "<a href='" + feeds.thread.post.embed.external.uri + "' target='_blank'>" +
+                                feeds.thread.post.embed.external.title;
+                            if (feeds.thread.post.embed.external.thumb !== undefined) {
+                                timeline = timeline + "<br><img src='" + feeds.thread[i].post.embed.external.thumb + "' width='300'>";
+                            }
+                            timeline = timeline + "</a><br>";
+                        }
+                    }
+                    timeline = timeline + "<br>";
+                    if (feeds.thread.post.replyCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="18" viewBox="0 0 24 24" height="18" style="color: rgb(111, 134, 159); pointer-events: none;"><path fill="hsl(211, 20%, 53%)" fill-rule="evenodd" clip-rule="evenodd" d="M2.002 6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H12.28l-4.762 2.858A1 1 0 0 1 6.002 21v-2h-1a3 3 0 0 1-3-3V6Zm3-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2a1 1 0 0 1 1 1v1.234l3.486-2.092a1 1 0 0 1 .514-.142h7a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-14Z"></path></svg>' +
+                            "<span style='color: rgb(111, 134, 159);'>&nbsp;" + feeds.thread.post.replyCount + "</span>&nbsp;&nbsp;";
+                    }
+                    if (feeds.thread.post.repostCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="13" height="13" viewBox="0 0 24 24" style="color: rgb(66, 87, 108); margin-right: 3px;"><path fill="hsl(211, 24%, 34.2%)" fill-rule="evenodd" clip-rule="evenodd" d="M17.957 2.293a1 1 0 1 0-1.414 1.414L17.836 5H6a3 3 0 0 0-3 3v3a1 1 0 1 0 2 0V8a1 1 0 0 1 1-1h11.836l-1.293 1.293a1 1 0 0 0 1.414 1.414l2.47-2.47a1.75 1.75 0 0 0 0-2.474l-2.47-2.47ZM20 12a1 1 0 0 1 1 1v3a3 3 0 0 1-3 3H6.164l1.293 1.293a1 1 0 1 1-1.414 1.414l-2.47-2.47a1.75 1.75 0 0 1 0-2.474l2.47-2.47a1 1 0 0 1 1.414 1.414L6.164 17H18a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1Z"></path></svg>&nbsp;'+
+                            "<span style='color: rgb(111, 134, 159);'>" + feeds.thread.post.repostCount + "</span>&nbsp;&nbsp;";
+                    }
+                    if (feeds.thread.post.likeCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="18" viewBox="0 0 24 24" height="18" style="color: rgb(111, 134, 159); pointer-events: none;"><path fill="hsl(211, 20%, 53%)" fill-rule="evenodd" clip-rule="evenodd" d="M16.734 5.091c-1.238-.276-2.708.047-4.022 1.38a1 1 0 0 1-1.424 0C9.974 5.137 8.504 4.814 7.266 5.09c-1.263.282-2.379 1.206-2.92 2.556C3.33 10.18 4.252 14.84 12 19.348c7.747-4.508 8.67-9.168 7.654-11.7-.541-1.351-1.657-2.275-2.92-2.557Zm4.777 1.812c1.604 4-.494 9.69-9.022 14.47a1 1 0 0 1-.978 0C2.983 16.592.885 10.902 2.49 6.902c.779-1.942 2.414-3.334 4.342-3.764 1.697-.378 3.552.003 5.169 1.286 1.617-1.283 3.472-1.664 5.17-1.286 1.927.43 3.562 1.822 4.34 3.764Z"></path></svg>&nbsp;' +
+                            "<span style='color: rgb(111, 134, 159);'>" + feeds.thread.post.likeCount + "</span>&nbsp;&nbsp;";
+                    }
+                    const createdAt = new Date(feeds.thread.post.record.createdAt);
+                    timeline = timeline + 
+                        "<span style='color: rgb(111, 134, 159);'>(" + createdAt.toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo',}) + ")</span><br>" +
+                        "</div>" +
+                        "<hr>";
+                Object.keys(feeds.thread.replies).forEach(function(i) {
+                    timeline = timeline +
+                        "<img src='" + feeds.thread.replies[i].post.author.avatar + "' width='20'>&nbsp;&nbsp;" +
+                        "<span style='font-weight: bold;'>" + feeds.thread.replies[i].post.author.displayName + "</span>" +
+                        "<span style='color: rgb(111, 134, 159);'> @" + feeds.thread.replies[i].post.author.handle + "</span>" +
+                        "<br><br>" +
+                        feeds.thread.replies[i].post.record.text.replace("\n", "<br>") + "<br>";
+                    if (feeds.thread.replies[i].post.embed) {
+                        timeline = timeline + "<br>";
+                        if (feeds.thread.replies[i].post.embed.images) {
+                            feeds.thread.replies[i].post.embed.images.forEach(function(image) {
+                                if (image.thumb !== undefined) {
+                                    timeline = timeline + 
+                                        "<a href='" + image.fullsize + "' target='_blank'>" +
+                                        "<img src='" + image.thumb + "' width='300'>" +
+                                        "</a><br>"
+                                }
+                            });
+                        }
+                        if (feeds.thread.replies[i].post.embed.external) {
+                            timeline = timeline +
+                                "<a href='" + feeds.thread.replies[i].post.embed.external.uri + "' target='_blank'>" +
+                                feeds.thread.replies[i].post.embed.external.title;
+                            if (feeds.thread.replies[i].post.embed.external.thumb !== undefined) {
+                                timeline = timeline + "<br><img src='" + feeds.thread[i].post.embed.external.thumb + "' width='300'>";
+                            }
+                            timeline = timeline + "</a><br>";
+                        }
+                    }
+                    timeline = timeline + "<br>";
+                    if (feeds.thread.replies[i].post.replyCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="18" viewBox="0 0 24 24" height="18" style="color: rgb(111, 134, 159); pointer-events: none;"><path fill="hsl(211, 20%, 53%)" fill-rule="evenodd" clip-rule="evenodd" d="M2.002 6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H12.28l-4.762 2.858A1 1 0 0 1 6.002 21v-2h-1a3 3 0 0 1-3-3V6Zm3-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2a1 1 0 0 1 1 1v1.234l3.486-2.092a1 1 0 0 1 .514-.142h7a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-14Z"></path></svg>' +
+                            "<span style='color: rgb(111, 134, 159);'>&nbsp;" + feeds.thread.replies[i].post.replyCount + "</span>&nbsp;&nbsp;";
+                    }
+                    if (feeds.thread.replies[i].post.repostCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="13" height="13" viewBox="0 0 24 24" style="color: rgb(66, 87, 108); margin-right: 3px;"><path fill="hsl(211, 24%, 34.2%)" fill-rule="evenodd" clip-rule="evenodd" d="M17.957 2.293a1 1 0 1 0-1.414 1.414L17.836 5H6a3 3 0 0 0-3 3v3a1 1 0 1 0 2 0V8a1 1 0 0 1 1-1h11.836l-1.293 1.293a1 1 0 0 0 1.414 1.414l2.47-2.47a1.75 1.75 0 0 0 0-2.474l-2.47-2.47ZM20 12a1 1 0 0 1 1 1v3a3 3 0 0 1-3 3H6.164l1.293 1.293a1 1 0 1 1-1.414 1.414l-2.47-2.47a1.75 1.75 0 0 1 0-2.474l2.47-2.47a1 1 0 0 1 1.414 1.414L6.164 17H18a1 1 0 0 0 1-1v-3a1 1 0 0 1 1-1Z"></path></svg>&nbsp;'+
+                            "<span style='color: rgb(111, 134, 159);'>" + feeds.thread.replies[i].post.repostCount + "</span>&nbsp;&nbsp;";
+                    }
+                    if (feeds.thread.replies[i].post.likeCount > 0) {
+                        timeline = timeline +
+                            '<svg fill="none" width="18" viewBox="0 0 24 24" height="18" style="color: rgb(111, 134, 159); pointer-events: none;"><path fill="hsl(211, 20%, 53%)" fill-rule="evenodd" clip-rule="evenodd" d="M16.734 5.091c-1.238-.276-2.708.047-4.022 1.38a1 1 0 0 1-1.424 0C9.974 5.137 8.504 4.814 7.266 5.09c-1.263.282-2.379 1.206-2.92 2.556C3.33 10.18 4.252 14.84 12 19.348c7.747-4.508 8.67-9.168 7.654-11.7-.541-1.351-1.657-2.275-2.92-2.557Zm4.777 1.812c1.604 4-.494 9.69-9.022 14.47a1 1 0 0 1-.978 0C2.983 16.592.885 10.902 2.49 6.902c.779-1.942 2.414-3.334 4.342-3.764 1.697-.378 3.552.003 5.169 1.286 1.617-1.283 3.472-1.664 5.17-1.286 1.927.43 3.562 1.822 4.34 3.764Z"></path></svg>&nbsp;' +
+                            "<span style='color: rgb(111, 134, 159);'>" + feeds.thread.replies[i].post.likeCount + "</span>&nbsp;&nbsp;";
+                    }
+                    const createdAt = new Date(feeds.thread.replies[i].post.record.createdAt);
+                    timeline = timeline + 
+                        "<span style='color: rgb(111, 134, 159);'>(" + createdAt.toLocaleString('ja-JP', {timeZone: 'Asia/Tokyo',}) + ")</span><br>" +
+                        "</div>" +
+                        "<hr>";
                 });
                 return timeline;
             }
