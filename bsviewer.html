@@ -59,7 +59,11 @@
                 if (!profile) {
                     return;
                 }
-                document.getElementById("profile").innerHTML = buildProfile(profile);
+                const plc = await getPlcDirectory(did);
+                if (!plc) {
+                    return;
+                }
+                document.getElementById("profile").innerHTML = buildProfile(profile, plc);
                 await addEventFollows(did);
                 await addEventFollowers(did);
                 const feeds = await xRpcRequest(did, "feeds", "app.bsky.feed.getAuthorFeed?actor=" + encodeURI(did) + "&filter=posts_and_author_threads&includePins=true&limit=30");
@@ -130,6 +134,19 @@
                 }
             }
 
+            async function getPlcDirectory(did) {
+                try {
+                    const url = "https://plc.directory/" + encodeURI(did);
+                    const response = await fetch(url);
+                    if (!response) {
+                        return;
+                    }
+                    return await response.json();
+                } catch(e) {
+                    document.getElementById("error").innerText = "cannot retrieve plc.";
+                }
+            }
+
             async function xRpcRequest(did, name, suffix) {
                 try {
                     const url = "https://public.api.bsky.app/xrpc/" + suffix;
@@ -169,16 +186,23 @@
                 return list;
             }
 
-            function buildProfile(profile) {
-                const tags =
-                    "<img src='" + profile.avatar + "' style='float: right;' width='100'>" +
-                    "<h1>" + profile.displayName + "</h1><br>" +
-                    "<span style='color: rgb(111, 134, 159);'>@" + profile.handle + "</span><br>" +
-                    "<span id='showfollowers' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followersCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロワー</span></span> " +
-                    "<span id='showfollows' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followsCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロー中</span></span> " +
-                    "<span style='font-weight: bold;'>" + profile.postsCount + "</span> <span style='color: rgb(111, 134, 159);'>投稿</span><br><br>" +
-                    profile.description.replace("\n", "<br>") + "<br>" +
-                    "<hr>";
+            function buildProfile(profile, plc) {
+                console.log(plc);
+                let tags = '';
+                    tags = tags +
+                        "<img src='" + profile.avatar + "' style='float: right;' width='100'>" +
+                        "<h1>" + profile.displayName + "</h1><br>" +
+                        "<span style='color: rgb(111, 134, 159);'>@" + profile.handle + "</span><br>";
+                        tags = tags + "<span style='color: rgb(111, 134, 159);'>" + plc.id + "</span><br>";
+                    Object.keys(plc.service).forEach(function(i) {
+                        tags = tags + "<span style='color: rgb(111, 134, 159);'>" + plc.service[i].serviceEndpoint + "</span><br>";
+                    });
+                    tags = tags +
+                        "<span id='showfollowers' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followersCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロワー</span></span> " +
+                        "<span id='showfollows' data-bs-toggle='modal' data-bs-target='#followModal'><span style='font-weight: bold;'>" + profile.followsCount + "</span> <span style='color: rgb(111, 134, 159);'>フォロー中</span></span> " +
+                        "<span style='font-weight: bold;'>" + profile.postsCount + "</span> <span style='color: rgb(111, 134, 159);'>投稿</span><br><br>" +
+                        profile.description.replace("\n", "<br>") + "<br>" +
+                        "<hr>";
                 return tags;
             }
 
